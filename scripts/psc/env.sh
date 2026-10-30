@@ -36,8 +36,12 @@ wait_ready() {
   local port=$1 pid=$2 log=$3 timeout=${4:-900} t=0
   until curl -sf "http://127.0.0.1:$port/v1/models" >/dev/null; do
     if ! kill -0 "$pid" 2>/dev/null; then
-      echo "!! server on :$port exited. Last lines of $log:" >&2
-      tail -40 "$log" >&2
+      # vLLM prints the real cause well above its final traceback, so show error lines first
+      echo "!! server on :$port exited. Error lines in $log:" >&2
+      grep -nE "Error|Exception|CUDA|capability|not supported|no kernel image" "$log" \
+        | grep -v 'File "' | head -20 >&2 || true
+      echo "!! Last lines:" >&2
+      tail -15 "$log" >&2
       return 1
     fi
     if (( t >= timeout )); then

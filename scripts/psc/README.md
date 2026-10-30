@@ -69,6 +69,7 @@ Single server by hand: `bash scripts/psc/serve.sh 8000 0.85`, then
 | Symptom (in `logs/psc_*/vllm_8000.log`) | Try |
 |---|---|
 | `no kernel image is available for execution on the device`, `torch ... +cu130 does not include kernels for this GPU` | The venv has a vLLM built with CUDA 13 (no V100 support). Re-run `bash scripts/psc/setup.sh`: it pins 0.10.1.1 and rebuilds the venv. `setup.sh` prints `archs`, which must include `sm_70` |
+| `Qwen2Tokenizer has no attribute all_special_tokens_extended` | transformers 5 is too new for vLLM 0.10.1.1. Re-run `bash scripts/psc/setup.sh` (it now installs `transformers<5` and dependencies as of 2025-09-01) |
 | 0.10.1.1 also fails | `VLLM_VERSION=0.9.2 bash scripts/psc/setup.sh` |
 | Attention backend error with `VLLM_USE_V1=1` | keep the default `VLLM_USE_V1=0`, or `export VLLM_ATTENTION_BACKEND=TRITON_ATTN` |
 | Second server fails with not enough free memory | `GPU_MEM=0.35` |

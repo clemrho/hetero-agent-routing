@@ -10,6 +10,13 @@ set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
 source "$HERE/env.sh"
 VLLM_VERSION="${VLLM_VERSION-0.10.1.1}"   # set VLLM_VERSION= (empty) for the latest
+# An old vLLM breaks with today's dependencies (e.g. transformers 5 removed
+# all_special_tokens_extended). So resolve its dependencies as of shortly after its
+# release, and cap transformers explicitly so an existing venv gets downgraded too.
+if [[ "$VLLM_VERSION" == 0.10.1.1 ]]; then
+  DEPS_BEFORE="${DEPS_BEFORE-2025-09-01}"
+  EXTRA_PINS="${EXTRA_PINS-transformers<5}"
+fi
 mkdir -p "$HAR_ROOT"
 echo "== Installing into $HAR_ROOT"
 
@@ -31,8 +38,11 @@ fi
 if [[ ! -x "$VENV/bin/python" ]]; then
   uv venv --python 3.12 "$VENV"
 fi
-echo "== Installing vllm${VLLM_VERSION:+==$VLLM_VERSION} (a few minutes)"
-uv pip install --python "$VENV/bin/python" "vllm${VLLM_VERSION:+==$VLLM_VERSION}" httpx requests
+echo "== Installing vllm${VLLM_VERSION:+==$VLLM_VERSION}${DEPS_BEFORE:+ (deps as of $DEPS_BEFORE)} (a few minutes)"
+uv pip install --python "$VENV/bin/python" \
+  ${DEPS_BEFORE:+--exclude-newer "$DEPS_BEFORE"} \
+  "vllm${VLLM_VERSION:+==$VLLM_VERSION}" ${EXTRA_PINS:+"$EXTRA_PINS"} httpx requests
+"$VENV/bin/python" -c "import transformers; print('   transformers', transformers.__version__)"
 "$VENV/bin/python" -c "import vllm, torch; print('   vllm', vllm.__version__, '| torch', torch.__version__, '| cuda', torch.version.cuda, '| archs', torch.cuda.get_arch_list())"
 
 # 3. Model weights (Qwen3 is not gated, no HF login needed)

@@ -14,6 +14,7 @@ import argparse
 import json
 import sys
 import time
+import urllib.error
 import urllib.request
 import uuid
 
@@ -28,8 +29,12 @@ def post(url, body, headers=None):
         url, data=json.dumps(body).encode(),
         headers={"Content-Type": "application/json", **(headers or {})},
     )
-    with urllib.request.urlopen(req, timeout=600) as r:
-        return json.loads(r.read())
+    try:
+        with urllib.request.urlopen(req, timeout=600) as r:
+            return json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode(errors="replace")[:2000]
+        sys.exit(f"FAIL {url}: HTTP {e.code}\n{detail}\n(see the server log for the traceback)")
 
 
 def main():
@@ -61,6 +66,7 @@ def main():
     post(f"{a.url}/v1/completions", {"model": a.model, "prompt": "warmup", "max_tokens": 1}, headers)
     prefix = f"[{uuid.uuid4().hex}] " + "word " * a.ctx  # random tag -> cold on every run
     cold = ttft(prefix + "Q1")
+    print(f"  cold ok ({cold[0] * 1000:.1f} ms), sending warm request (prefix-cache hit)...")
     warm = ttft(prefix + "Q2")
     for name, (t, n, c) in (("cold", cold), ("warm", warm)):
         print(f"  {name}: {t * 1000:7.1f} ms  prompt_tokens={n}  cached_tokens={c}")

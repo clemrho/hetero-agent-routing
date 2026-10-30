@@ -33,18 +33,25 @@ vllm_serve() {
     ${VLLM_EXTRA_ARGS:-}
 }
 
+# Print the useful part of a vLLM log: error lines first (the real cause sits well
+# above the final traceback), then the tail.
+# usage: show_errors LOGFILE
+show_errors() {
+  echo "!! Error lines in $1:" >&2
+  grep -nE "Error|error:|errors\.|Exception|CUDA|capability|not supported|no kernel image|out of resource" "$1" \
+    | grep -v 'File "' | tail -20 >&2 || true
+  echo "!! Last lines:" >&2
+  tail -15 "$1" >&2
+}
+
 # Wait until a vLLM server answers /v1/models. Fails early if the process died.
 # usage: wait_ready PORT PID LOGFILE [TIMEOUT_S]
 wait_ready() {
   local port=$1 pid=$2 log=$3 timeout=${4:-900} t=0
-  until curl -sf "http://127.0.0.1:$port/v1/models" >/dev/null; do
+  until curl -sf --max-time 5 "http://127.0.0.1:$port/v1/models" >/dev/null; do
     if ! kill -0 "$pid" 2>/dev/null; then
-      # vLLM prints the real cause well above its final traceback, so show error lines first
-      echo "!! server on :$port exited. Error lines in $log:" >&2
-      grep -nE "Error|Exception|CUDA|capability|not supported|no kernel image" "$log" \
-        | grep -v 'File "' | head -20 >&2 || true
-      echo "!! Last lines:" >&2
-      tail -15 "$log" >&2
+      echo "!! server on :$port exited." >&2
+      show_errors "$log"
       return 1
     fi
     if (( t >= timeout )); then

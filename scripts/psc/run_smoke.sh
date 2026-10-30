@@ -3,9 +3,9 @@
 #   bash scripts/psc/run_smoke.sh
 #
 # What it does:
-#   1. starts two vLLM servers on the same GPU (:8000 plays "tpu", :8001 plays "a100")
+#   1. starts two vLLM servers on the same GPU (PORT_A plays "tpu", PORT_B plays "a100"; default 8000/8001)
 #   2. checks each one works and prefix caching is on (scripts/check_backend.py)
-#   3. if the Production Stack router is installed (WITH_PS=1 setup), starts it on :8080
+#   3. if the Production Stack router is installed (WITH_PS=1 setup), starts it on PS_PORT (default 8080)
 #   4. runs router/router.py with synthetic workflows for every policy
 #   5. prints the summary (analysis/analyze.py)
 # Both backends are the same GPU, so the numbers only prove the pipeline works;
@@ -16,6 +16,14 @@ REPO=$(cd "$HERE/../.." && pwd)
 source "$HERE/env.sh"
 
 N_WF="${N_WF:-4}"
+# Ports: change them if someone else on a shared node already uses these
+PORT_A="${PORT_A:-8000}"; PORT_B="${PORT_B:-8001}"; PS_PORT="${PS_PORT:-8080}"
+for port in "$PORT_A" "$PORT_B" "$PS_PORT"; do
+  if (exec 3<>"/dev/tcp/127.0.0.1/$port") 2>/dev/null; then   # something is listening
+    echo "!! Port $port is already in use. Pick free ones, e.g. PORT_A=8100 PORT_B=8101 PS_PORT=8180" >&2
+    exit 1
+  fi
+done
 POLICIES="${POLICIES:-LB FF CA RR}"
 OUT="$REPO/logs/psc_${SLURM_JOB_ID:-$(date +%Y%m%d_%H%M%S)}"
 mkdir -p "$OUT"
@@ -33,7 +41,7 @@ nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv 2>/dev/null
 
 # 1. Two backends, started one after the other so their memory checks don't race
 echo "== [1/5] Starting vLLM backends"
-for port in 8000 8001; do
+for port in "$PORT_A" "$PORT_B"; do
   vllm_serve "$port" "${GPU_MEM:-0.4}" > "$OUT/vllm_$port.log" 2>&1 &
   PIDS+=($!)
   wait_ready "$port" "$!" "$OUT/vllm_$port.log"
@@ -41,23 +49,27 @@ done
 
 # 2. Health + prefix cache check
 echo "== [2/5] Checking backends"
-for port in 8000 8001; do
-  "$PY" "$REPO/scripts/check_backend.py" --url "http://127.0.0.1:$port" --model "$MODEL" | tee -a "$OUT/check.txt"
+for port in "$PORT_A" "$PORT_B"; do
+  if ! "$PY" "$REPO/scripts/check_backend.py" --url "http://127.0.0.1:$port" --model "$MODEL" 2>&1 \
+      | tee -a "$OUT/check.txt"; then
+    show_errors "$OUT/vllm_$port.log"
+    exit 1
+  fi
 done
 
 # 3. Optional Production Stack router (session mode)
 if [[ -x "$ROUTER_VENV/bin/vllm-router" ]]; then
-  echo "== [3/5] Starting Production Stack router on :8080"
-  "$ROUTER_VENV/bin/vllm-router" --port 8080 --host 127.0.0.1 \
+  echo "== [3/5] Starting Production Stack router on :$PS_PORT"
+  "$ROUTER_VENV/bin/vllm-router" --port "$PS_PORT" --host 127.0.0.1 \
     --service-discovery static \
-    --static-backends "http://127.0.0.1:8000,http://127.0.0.1:8001" \
+    --static-backends "http://127.0.0.1:$PORT_A,http://127.0.0.1:$PORT_B" \
     --static-models "$MODEL,$MODEL" \
     --routing-logic session --session-key x-session-id \
     --engine-stats-interval 10 --log-stats \
     > "$OUT/router_ps.log" 2>&1 &
   PIDS+=($!)
-  wait_ready 8080 "$!" "$OUT/router_ps.log" 120
-  "$PY" "$REPO/scripts/check_backend.py" --url http://127.0.0.1:8080 --model "$MODEL" --session wf0 \
+  wait_ready "$PS_PORT" "$!" "$OUT/router_ps.log" 120
+  "$PY" "$REPO/scripts/check_backend.py" --url "http://127.0.0.1:$PS_PORT" --model "$MODEL" --session wf0 \
     | tee -a "$OUT/check.txt"
   POLICIES="$POLICIES PS"
 else
@@ -66,7 +78,7 @@ fi
 
 # 4. Router policies on synthetic workflows (router.py writes logs/ under the cwd)
 echo "== [4/5] Running policies: $POLICIES (n_wf=$N_WF)"
-export TPU_URL=http://127.0.0.1:8000 A100_URL=http://127.0.0.1:8001 PS_URL=http://127.0.0.1:8080
+export TPU_URL="http://127.0.0.1:$PORT_A" A100_URL="http://127.0.0.1:$PORT_B" PS_URL="http://127.0.0.1:$PS_PORT"
 for pol in $POLICIES; do
   (cd "$OUT" && "$PY" "$REPO/router/router.py" --policy "$pol" --n_wf "$N_WF")
 done

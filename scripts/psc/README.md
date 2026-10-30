@@ -57,7 +57,8 @@ Both backends are the same GPU, so latency differences between policies mean lit
 | `GPU_MEM` | `0.4` | GPU memory fraction per backend (two share one GPU) |
 | `N_WF` | `4` | concurrent workflows |
 | `POLICIES` | `LB FF CA RR` | PS is added automatically if the router is installed |
-| `VLLM_VERSION` | latest | pin vLLM in `setup.sh` |
+| `VLLM_VERSION` | `0.10.1.1` | vLLM version in `setup.sh` (newer ones don't run on V100, see below) |
+| `VLLM_USE_V1` | `0` | `0` = older V0 engine (most reliable on V100 with vLLM 0.10.x) |
 | `VLLM_EXTRA_ARGS` | — | extra flags for `vllm serve` |
 
 Single server by hand: `bash scripts/psc/serve.sh 8000 0.85`, then
@@ -67,9 +68,9 @@ Single server by hand: `bash scripts/psc/serve.sh 8000 0.85`, then
 
 | Symptom (in `logs/psc_*/vllm_8000.log`) | Try |
 |---|---|
-| Attention backend / FlashAttention / compute capability 7.0 error | `VLLM_EXTRA_ARGS="--attention-backend TRITON_ATTN"`; if that flag doesn't exist in your version, `export VLLM_ATTENTION_BACKEND=TRITON_ATTN` |
-| Latest vLLM still won't run on V100 | `VLLM_VERSION=0.9.2 bash scripts/psc/setup.sh`, then run with `VLLM_USE_V1=0 bash scripts/psc/run_smoke.sh` |
-| CUDA driver too old | check `nvidia-smi`; pin an older vLLM as above (its wheels use an older CUDA) |
+| `no kernel image is available for execution on the device`, `torch ... +cu130 does not include kernels for this GPU` | The venv has a vLLM built with CUDA 13 (no V100 support). Re-run `bash scripts/psc/setup.sh`: it pins 0.10.1.1 and rebuilds the venv. `setup.sh` prints `archs`, which must include `sm_70` |
+| 0.10.1.1 also fails | `VLLM_VERSION=0.9.2 bash scripts/psc/setup.sh` |
+| Attention backend error with `VLLM_USE_V1=1` | keep the default `VLLM_USE_V1=0`, or `export VLLM_ATTENTION_BACKEND=TRITON_ATTN` |
 | Second server fails with not enough free memory | `GPU_MEM=0.35` |
 | `--enable-prompt-tokens-details` unknown | `VLLM_EXTRA_ARGS` can't remove flags: delete that line in `env.sh`; `cached_tokens` will show as `None` |
 | Model download fails on the compute node | run `setup.sh` on the login node first (it pre-downloads the weights) |

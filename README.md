@@ -12,6 +12,8 @@ CMU 11-868 LLM Systems course project.
 | `traces/` | Agent workflow traces |
 | `replay/` | Replays traces through the router (todo) |
 | `analysis/analyze.py` | TTFT, makespan, cache hit rate, device split from the logs |
+| `scripts/check_backend.py` | Health + prefix-cache check for any vLLM backend |
+| `scripts/psc/` | One-command smoke test on a PSC V100 ([README](scripts/psc/README.md)) |
 | `docs/PLAN.md` | Roles, milestones, workflow |
 
 ## Quick start (TPU notebook)

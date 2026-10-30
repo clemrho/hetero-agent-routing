@@ -9,8 +9,8 @@ CMU 11-868 LLM Systems course project.
 |---|---|
 | `router/router.py` | Router with policies LB / FF / CA / RR / PS, plus a synthetic smoke test |
 | `baselines/prodstack/` | Official vLLM Production Stack router (session mode) as the baseline |
-| `traces/` | Agent workflow traces |
-| `replay/` | Replays traces through the router (todo) |
+| `traces/` | Agent workflow traces; `gen_synthetic.py` makes the synthetic set |
+| `replay/` | `replay.py` replays traces through the router; `mock_vllm.py` fake server for testing |
 | `analysis/analyze.py` | TTFT, makespan, cache hit rate, device split from the logs |
 | `scripts/check_backend.py` | Health + prefix-cache check for any vLLM backend |
 | `scripts/psc/` | One-command smoke test on a PSC V100 ([README](scripts/psc/README.md)) |

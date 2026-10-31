@@ -126,8 +126,10 @@ class Router:
 
 
 # ---------------- synthetic smoke test (until real traces are ready) ----------
-async def synthetic_workflow(router, wf_id, steps=5, ctx=2000, add=500, tool_s=1.0, out=32):
-    prompt = f"[{wf_id}] " + "hello " * ctx          # unique prefix per workflow
+async def synthetic_workflow(router, wf_id, run_tag, steps=5, ctx=2000, add=500, tool_s=1.0, out=32):
+    # Unique prefix per workflow AND per run: policies run one after another on the
+    # same servers, so a fixed prefix would hit cache left behind by the previous run.
+    prompt = f"[{run_tag} {wf_id}] " + "hello " * ctx
     for s in range(steps):
         await router.call(wf_id, s, prompt, max_tokens=out)
         await asyncio.sleep(tool_s)                    # pretend to run a tool
@@ -137,7 +139,8 @@ async def synthetic_workflow(router, wf_id, steps=5, ctx=2000, add=500, tool_s=1
 async def main(policy, n_wf):
     router = Router(policy, f"logs/log_{policy}_{n_wf}.jsonl")
     t0 = time.time()
-    await asyncio.gather(*(synthetic_workflow(router, f"wf{i}") for i in range(n_wf)))
+    run_tag = f"{policy}-{t0:.0f}"
+    await asyncio.gather(*(synthetic_workflow(router, f"wf{i}", run_tag) for i in range(n_wf)))
     print(f"{policy} n_wf={n_wf}: {time.time() - t0:.1f}s total")
     await router.close()
 

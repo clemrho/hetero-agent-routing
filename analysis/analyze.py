@@ -7,7 +7,8 @@ For each log file, prints:
     calls, makespan (first arrival -> last done)
     TTFT p50 / p99 (t_first - t_arrive, includes queueing in the router)
     mean workflow completion time
-    prefix cache hit rate (sum cached_tokens / sum prompt_tokens)
+    prefix cache hit rate (sum cached_tokens / sum prompt_tokens), and its best case
+        (each step reuses the previous step's whole prompt) as a sanity check
     device split, and how many workflows switched devices between steps
 """
 import json
@@ -34,6 +35,12 @@ def summarize(path):
     switched = sum(len({x["dev"] for x in rs}) > 1 for rs in by_wf.values())
     prompt = sum(r.get("prompt_tokens") or 0 for r in recs)
     cached = sum(r.get("cached_tokens") or 0 for r in recs)
+    # Best case: every step reuses the whole previous prompt of its workflow (step 0 is
+    # always a miss). A measured hit rate above this means cache left over from another run.
+    ideal = 0
+    for rs in by_wf.values():
+        rs = sorted(rs, key=lambda x: x["step"])
+        ideal += sum(prev.get("prompt_tokens") or 0 for prev in rs[:-1])
     return {
         "file": path,
         "policy": recs[0]["policy"],
@@ -43,6 +50,7 @@ def summarize(path):
         "ttft_p99_s": pct(ttft, 99),
         "wf_mean_s": sum(wf_time) / len(wf_time),
         "cache_hit": cached / prompt if prompt else float("nan"),
+        "cache_hit_max": ideal / prompt if prompt else float("nan"),
         "devices": dict(Counter(r["dev"] for r in recs)),
         "wf_switched": f"{switched}/{len(by_wf)}",
     }
@@ -59,6 +67,9 @@ if __name__ == "__main__":
         print(
             f"{s['policy']:>3} {s['file']}\n"
             f"    calls={s['calls']} makespan={s['makespan_s']:.1f}s wf_mean={s['wf_mean_s']:.1f}s\n"
-            f"    ttft p50={s['ttft_p50_s']:.3f}s p99={s['ttft_p99_s']:.3f}s cache_hit={s['cache_hit']:.1%}\n"
+            f"    ttft p50={s['ttft_p50_s']:.3f}s p99={s['ttft_p99_s']:.3f}s "
+            f"cache_hit={s['cache_hit']:.1%} (max {s['cache_hit_max']:.1%})\n"
             f"    devices={s['devices']} wf_switched={s['wf_switched']}"
         )
+        if s["cache_hit"] > s["cache_hit_max"] + 0.01:
+            print("    !! cache_hit above the max: prompts reused cache from an earlier run")

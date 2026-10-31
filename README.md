@@ -13,7 +13,8 @@ CMU 11-868 LLM Systems course project.
 | `replay/` | `replay.py` replays traces through the router; `mock_vllm.py` fake server for testing |
 | `analysis/analyze.py` | TTFT, makespan, cache hit rate, device split from the logs |
 | `scripts/check_backend.py` | Health + prefix-cache check for any vLLM backend |
-| `scripts/psc/` | One-command smoke test on a PSC V100 ([README](scripts/psc/README.md)) |
+| `scripts/psc/` | One-command smoke test on a PSC GPU, default L40S ([README](scripts/psc/README.md)) |
+| `scripts/colab/` | Colab TPU v5e + PSC L40S smoke test over an SSH tunnel ([README](scripts/colab/README.md)) |
 | `docs/PLAN.md` | Roles, milestones, workflow |
 
 ## Quick start (TPU notebook)

@@ -12,8 +12,8 @@ export HAR_ROOT="${HAR_ROOT:-$PROJECT/har}"
 #         but the prefix-cache kernel fails to compile, so cache-hit requests error out.
 export GPU_TYPE="${GPU_TYPE:-l40s}"
 case "$GPU_TYPE" in
-  v100) _venv=vllm_env;        DEFAULT_VLLM_VERSION=0.10.1.1; _v1=0 ;;
-  *)    _venv=vllm_env_latest; DEFAULT_VLLM_VERSION="";       _v1=1 ;;
+  v100) _venv=vllm_env;        DEFAULT_VLLM_VERSION=0.10.1.1; _v1=0; _dtype=half ;;
+  *)    _venv=vllm_env_latest; DEFAULT_VLLM_VERSION="";       _v1=1; _dtype=bfloat16 ;;
 esac
 export VENV="${VENV:-$HAR_ROOT/$_venv}"                   # vLLM + httpx
 export ROUTER_VENV="${ROUTER_VENV:-$HAR_ROOT/router_env}" # Production Stack router (optional)
@@ -24,16 +24,17 @@ export PATH="$VENV/bin:$HOME/.local/bin:$PATH"            # venv tools (ninja) +
 
 export MODEL="${MODEL:-Qwen/Qwen3-0.6B}"
 export MAX_LEN="${MAX_LEN:-8192}"
+# V100 has no bfloat16; on L40S use bfloat16 like vLLM-TPU, so both devices run the same dtype
+export DTYPE="${DTYPE:-$_dtype}"
 export HOST="${HOST:-127.0.0.1}"   # use 0.0.0.0 if another machine must reach this server
 export VLLM_USE_V1="${VLLM_USE_V1:-$_v1}"   # 0 only matters for vLLM 0.10.x (V100 profile)
 
 # Start vLLM in the foreground (callers put it in the background with &).
-# V100 has no bfloat16, so force float16.
 # usage: vllm_serve PORT GPU_MEM_FRACTION
 vllm_serve() {
   exec "$VENV/bin/vllm" serve "$MODEL" \
     --host "$HOST" --port "$1" \
-    --dtype half \
+    --dtype "$DTYPE" \
     --max-model-len "$MAX_LEN" \
     --gpu-memory-utilization "$2" \
     --enable-prefix-caching \

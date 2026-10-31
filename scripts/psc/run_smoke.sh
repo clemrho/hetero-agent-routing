@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# End-to-end smoke test on ONE V100. Run on a GPU node, from the repo root:
+# End-to-end smoke test on ONE GPU (L40S by default, GPU_TYPE=v100 for V100). Run on a GPU node, from the repo root:
 #   bash scripts/psc/run_smoke.sh
 #
 # What it does:

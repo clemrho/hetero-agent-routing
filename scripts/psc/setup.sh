@@ -2,14 +2,16 @@
 # One-time setup. Run on a Bridges-2 LOGIN node (it needs internet), from the repo root:
 #   bash scripts/psc/setup.sh            # vLLM env + model
 #   WITH_PS=1 bash scripts/psc/setup.sh  # also install the Production Stack router
+#   GPU_TYPE=v100 bash scripts/psc/setup.sh  # V100 env instead of the default L40S one
 #
-# vLLM is pinned to 0.10.1.1 by default: newer releases ship torch built with CUDA 13,
-# which has no kernels for V100 (compute capability 7.0). 0.10.1.1 pulls torch 2.7.1
-# (CUDA 12), which still supports V100. Override with VLLM_VERSION=... on newer GPUs.
+# The vLLM version follows GPU_TYPE (see env.sh): latest for l40s, 0.10.1.1 for v100
+# (newer releases ship torch built with CUDA 13, which has no V100 kernels).
+# Override with VLLM_VERSION=x.y.z, or VLLM_VERSION= (empty) for the latest.
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
 source "$HERE/env.sh"
-VLLM_VERSION="${VLLM_VERSION-0.10.1.1}"   # set VLLM_VERSION= (empty) for the latest
+VLLM_VERSION="${VLLM_VERSION-$DEFAULT_VLLM_VERSION}"
+echo "== GPU_TYPE=$GPU_TYPE  vllm=${VLLM_VERSION:-latest}  venv=$VENV"
 # An old vLLM breaks with today's dependencies (e.g. transformers 5 removed
 # all_special_tokens_extended). So resolve its dependencies as of shortly after its
 # release, and cap transformers explicitly so an existing venv gets downgraded too.

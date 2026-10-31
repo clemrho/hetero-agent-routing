@@ -5,7 +5,17 @@
 # $PROJECT (/ocean/projects/<group>/<user>) has much more space than $HOME (25 GB).
 : "${PROJECT:=$HOME}"
 export HAR_ROOT="${HAR_ROOT:-$PROJECT/har}"
-export VENV="${VENV:-$HAR_ROOT/vllm_env}"                 # vLLM + httpx
+
+# GPU profile. Each GPU type gets its own venv because they need different vLLM builds.
+#   l40s (default): latest vLLM, V1 engine. Prefix caching works.
+#   v100: vLLM 0.10.1.1 + V0 engine (newer builds have no V100 kernels). Servers start,
+#         but the prefix-cache kernel fails to compile, so cache-hit requests error out.
+export GPU_TYPE="${GPU_TYPE:-l40s}"
+case "$GPU_TYPE" in
+  v100) _venv=vllm_env;        DEFAULT_VLLM_VERSION=0.10.1.1; _v1=0 ;;
+  *)    _venv=vllm_env_latest; DEFAULT_VLLM_VERSION="";       _v1=1 ;;
+esac
+export VENV="${VENV:-$HAR_ROOT/$_venv}"                   # vLLM + httpx
 export ROUTER_VENV="${ROUTER_VENV:-$HAR_ROOT/router_env}" # Production Stack router (optional)
 export HF_HOME="${HF_HOME:-$HAR_ROOT/hf_cache}"           # model weights
 export UV_CACHE_DIR="${UV_CACHE_DIR:-$HAR_ROOT/uv_cache}"
@@ -15,9 +25,7 @@ export PATH="$VENV/bin:$HOME/.local/bin:$PATH"            # venv tools (ninja) +
 export MODEL="${MODEL:-Qwen/Qwen3-0.6B}"
 export MAX_LEN="${MAX_LEN:-8192}"
 export HOST="${HOST:-127.0.0.1}"   # use 0.0.0.0 if another machine must reach this server
-# vLLM 0.10.x: use the older V0 engine, the most reliable path on V100.
-# (Ignored by vLLM >= 0.11, which only has V1.)
-export VLLM_USE_V1="${VLLM_USE_V1:-0}"
+export VLLM_USE_V1="${VLLM_USE_V1:-$_v1}"   # 0 only matters for vLLM 0.10.x (V100 profile)
 
 # Start vLLM in the foreground (callers put it in the background with &).
 # V100 has no bfloat16, so force float16.

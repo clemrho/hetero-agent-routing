@@ -94,12 +94,13 @@ Qwen3-4B in bf16 on vLLM's V1 engine, max_len 16384; the synthetic trace is gene
 and replayed through every policy (`LB FF CA RR`, plus `PS` if the Production Stack router is installed)
 at concurrency 1 / 4 / 8 / 16.
 
-The same vLLM 0.10.1.1 venv works on L40S / H100 (it just switches to the V1 engine and bf16),
-so no new install is needed beyond the model weights:
+It uses the latest vLLM from the separate `vllm_env_latest` venv (the same one as the L40S smoke test
+above; V100's pinned 0.10.1.1 can't run prefix caching). Set it up once, with the 4B weights and the
+Production Stack router:
 
 ```bash
 # login node, once
-MODEL=Qwen/Qwen3-4B WITH_PS=1 bash scripts/psc/setup.sh
+VLLM_VERSION= VENV=$PROJECT/har/vllm_env_latest MODEL=Qwen/Qwen3-4B WITH_PS=1 bash scripts/psc/setup.sh
 
 # batch (recommended; ~1–1.5 h per rep)
 sbatch scripts/psc/baselines.sbatch                       # 2x L40S

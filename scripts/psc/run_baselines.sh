@@ -23,6 +23,10 @@ export MODEL="${MODEL:-Qwen/Qwen3-4B}"
 export MAX_LEN="${MAX_LEN:-16384}"
 export DTYPE="${DTYPE:-bfloat16}"
 export VLLM_USE_V1="${VLLM_USE_V1:-1}"
+# Latest vLLM in its own venv (V100 needs the pinned 0.10.1.1 one; L40S/H100 use this).
+# Create it once on a login node:  VLLM_VERSION= VENV=$PROJECT/har/vllm_env_latest bash scripts/psc/setup.sh
+: "${PROJECT:=$HOME}"
+export VENV="${VENV:-${HAR_ROOT:-$PROJECT/har}/vllm_env_latest}"
 source "$HERE/env.sh"
 
 N_GPU="${N_GPU:-2}"
@@ -41,7 +45,7 @@ done
 OUT="${OUT:-$REPO/logs/baselines_${SLURM_JOB_ID:-$(date +%Y%m%d_%H%M%S)}}"
 mkdir -p "$OUT"
 PY="$VENV/bin/python"
-[[ -x "$PY" ]] || { echo "!! $PY not found. Run scripts/psc/setup.sh on a login node first." >&2; exit 1; }
+[[ -x "$PY" ]] || { echo "!! $PY not found. On a login node run: VLLM_VERSION= VENV=$VENV MODEL=$MODEL bash scripts/psc/setup.sh" >&2; exit 1; }
 
 PIDS=()
 cleanup() { for p in ${PIDS[@]+"${PIDS[@]}"}; do kill "$p" 2>/dev/null || true; done; wait 2>/dev/null || true; }

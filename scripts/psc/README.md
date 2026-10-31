@@ -86,3 +86,37 @@ Single server by hand: `bash scripts/psc/serve.sh 8000 0.85`, then
 | Second server fails with not enough free memory | `GPU_MEM=0.35` |
 | `--enable-prompt-tokens-details` unknown | `VLLM_EXTRA_ARGS` can't remove flags: delete that line in `env.sh`; `cached_tokens` will show as `None` |
 | Model download fails on the compute node | run `setup.sh` on the login node first (it pre-downloads the weights) |
+
+# Baseline sweep (2 GPUs, Qwen3-4B) — `run_baselines.sh`
+
+Use this to get real baseline numbers while the TPU is unavailable. One vLLM backend per GPU,
+Qwen3-4B in bf16 on vLLM's V1 engine, max_len 16384; the synthetic trace is generated to match
+and replayed through every policy (`LB FF CA RR`, plus `PS` if the Production Stack router is installed)
+at concurrency 1 / 4 / 8 / 16.
+
+The same vLLM 0.10.1.1 venv works on L40S / H100 (it just switches to the V1 engine and bf16),
+so no new install is needed beyond the model weights:
+
+```bash
+# login node, once
+MODEL=Qwen/Qwen3-4B WITH_PS=1 bash scripts/psc/setup.sh
+
+# batch (recommended; ~1–1.5 h per rep)
+sbatch scripts/psc/baselines.sbatch                       # 2x L40S
+sbatch --gpus=h100-80:2 scripts/psc/baselines.sbatch      # other GPU type; names from: sinfo -o "%P %G"
+
+# or interactively
+interact -p GPU-shared --gres=gpu:l40s-48:2 -t 3:00:00
+bash scripts/psc/run_baselines.sh
+```
+
+Output in `logs/baselines_<jobid>/`: `check.txt` (cold/warm + cached_tokens per backend),
+`trace_summary.txt`, `logs/synthetic/<POLICY>_c<N>_r<k>.jsonl` (one line per call),
+`summary.txt` (analyze.py on all runs).
+
+Knobs (export before running, they also pass through `sbatch`): `N_GPU=1` (both backends on one GPU),
+`CONC="1 4"`, `REPS=2`, `POLICIES="LB CA"`, `PER_COMBO=8`, `MODEL`, `MAX_LEN`, `DTYPE`.
+
+Both backends are the same GPU type, so this run measures the **cache vs. load** trade-off
+(CA / PS keep each workflow's cache, LB / RR balance load and lose cache); FF has no genuinely faster
+device here. Fast-vs-slow results need two different devices (GPU + TPU, or two GPU types).

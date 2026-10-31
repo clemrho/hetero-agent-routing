@@ -15,17 +15,18 @@ export PATH="$VENV/bin:$HOME/.local/bin:$PATH"            # venv tools (ninja) +
 export MODEL="${MODEL:-Qwen/Qwen3-0.6B}"
 export MAX_LEN="${MAX_LEN:-8192}"
 export HOST="${HOST:-127.0.0.1}"   # use 0.0.0.0 if another machine must reach this server
+# V100 has no bfloat16 -> half. On L40S / H100 / A100 use DTYPE=bfloat16 (the plan's setting).
+export DTYPE="${DTYPE:-half}"
 # vLLM 0.10.x: use the older V0 engine, the most reliable path on V100.
 # (Ignored by vLLM >= 0.11, which only has V1.)
 export VLLM_USE_V1="${VLLM_USE_V1:-0}"
 
 # Start vLLM in the foreground (callers put it in the background with &).
-# V100 has no bfloat16, so force float16.
 # usage: vllm_serve PORT GPU_MEM_FRACTION
 vllm_serve() {
   exec "$VENV/bin/vllm" serve "$MODEL" \
     --host "$HOST" --port "$1" \
-    --dtype half \
+    --dtype "$DTYPE" \
     --max-model-len "$MAX_LEN" \
     --gpu-memory-utilization "$2" \
     --enable-prefix-caching \

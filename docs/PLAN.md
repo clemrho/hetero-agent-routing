@@ -1,7 +1,7 @@
 # Plan and roles
 
 Goal: route agent workflows (multi-step LLM calls with tool gaps in between) across
-heterogeneous devices (A100 GPU + TPU), and show that our strategy (working name **GapShift**:
+heterogeneous devices (GPU + TPU v5e; the GPU is currently a PSC L40S), and show that our strategy (working name **GapShift**:
 use the tool gap to move a workflow's context to the faster device) beats the baselines on
 workflow completion time / TTFT without losing too much prefix-cache reuse.
 
@@ -13,7 +13,7 @@ Each person owns a directory, so PRs rarely conflict. Names are a proposal — s
 |---|---|---|
 | Yanze | Router, baselines (LB / FF / CA / RR / PS), GapShift | `router/`, `baselines/` |
 | Hannah | Agent traces and the replay client that feeds them to the router | `traces/`, `replay/` |
-| Keyi | Infra (vLLM-TPU, A100 vLLM, SSH tunnel, Production Stack router), experiment runs, analysis + plots | `scripts/`, `analysis/` |
+| Keyi | Infra (vLLM-TPU, GPU vLLM on PSC, SSH tunnel, Production Stack router), experiment runs, analysis + plots | `scripts/`, `analysis/` |
 
 Shared interfaces (change only with a heads-up to everyone):
 - `Router.call(wf_id, step, prompt, max_tokens) -> rec` in `router/router.py`
@@ -23,7 +23,7 @@ Shared interfaces (change only with a heads-up to everyone):
 ## Milestones
 
 ### Week 1 — everything runs end to end
-- [ ] Keyi: vLLM-TPU up on :8000, A100 vLLM reachable from the notebook (tunnel → :8001), same model on both
+- [ ] Keyi: vLLM-TPU up on :8000, GPU vLLM reachable from the notebook (tunnel → :8001), same model on both
 - [ ] Keyi: Production Stack router installed, `vllm-router --help` shows `session` and `--session-key`
 - [ ] Yanze: `router.py --policy {LB,FF,CA,RR}` smoke test with synthetic workflows on both devices
 - [ ] Yanze: `--policy PS` goes through the Production Stack router; confirm from its log that each `wf_id` sticks to one backend

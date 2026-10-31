@@ -16,7 +16,7 @@ Usage (inside the TPU notebook):
     # -> logs/log_LB_4.jsonl, one line per LLM call
 
 Backends come from env vars so nobody has to edit this file:
-    A100_URL  (default http://localhost:8001, e.g. an SSH tunnel)
+    GPU_URL   (default http://localhost:8001, e.g. an SSH tunnel; old name A100_URL also works)
     TPU_URL   (default http://localhost:8000)
     PS_URL    (default http://localhost:8080, the Production Stack router)
     MODEL     (default Qwen/Qwen3-4B)
@@ -35,11 +35,11 @@ from pathlib import Path
 import httpx
 
 BACKENDS = {
-    "a100": os.environ.get("A100_URL", "http://localhost:8001"),
+    "gpu": os.environ.get("GPU_URL") or os.environ.get("A100_URL") or "http://localhost:8001",
     "tpu": os.environ.get("TPU_URL", "http://localhost:8000"),
 }
 PS_URL = os.environ.get("PS_URL", "http://localhost:8080")
-FAST = "a100"  # which backend counts as the fast one (for FF / tie-breaks)
+FAST = "gpu"  # which backend counts as the fast one (for FF / tie-breaks)
 MODEL = os.environ.get("MODEL", "Qwen/Qwen3-4B")
 POLICIES = ("LB", "FF", "CA", "RR", "PS")
 

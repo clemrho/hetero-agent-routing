@@ -1,6 +1,6 @@
 """
 Check that one vLLM backend works and that prefix caching is on.
-Works for any backend (PSC V100, A100, TPU), standard library only.
+Works for any backend (PSC GPU, TPU), standard library only.
 
     python scripts/check_backend.py --url http://localhost:8000 --model Qwen/Qwen3-0.6B
 

@@ -6,7 +6,7 @@ Open the notebook straight from GitHub:
 ```
 Colab (TPU v5e)
  ├─ vLLM-TPU            127.0.0.1:8000   "tpu"   (slow)
- ├─ ssh tunnel          127.0.0.1:8001 ──► bridges2.psc.edu ──► <L40S node>:8000   "a100" label (fast)
+ ├─ ssh tunnel          127.0.0.1:8001 ──► bridges2.psc.edu ──► <L40S node>:8000   "gpu"   (fast)
  └─ router/router.py
 ```
 

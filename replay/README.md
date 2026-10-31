@@ -7,7 +7,7 @@ Every policy replays the same workflows with the same lengths and waits.
 ## Run
 
 ```bash
-export TPU_URL=http://localhost:8000 A100_URL=http://localhost:8001   # A100 via SSH tunnel
+export TPU_URL=http://localhost:8000 GPU_URL=http://localhost:8001   # GPU via SSH tunnel
 
 # one run
 python replay/replay.py --trace traces/synthetic.jsonl --policy CA --concurrency 4 --rep 0
@@ -37,13 +37,13 @@ An existing log is skipped, so an interrupted sweep can just be restarted; `--ov
   different content), so you don't need to restart vLLM between policies.
 - `--limit 4` runs only the first 4 workflows, for a quick check.
 
-## Testing without a TPU or A100
+## Testing without a TPU or GPU
 
 `mock_vllm.py` is a fake vLLM (streaming, prefix cache on 16-token blocks, `cached_tokens` in usage)
 for checking the pipeline. Its numbers mean nothing.
 
 ```bash
-python replay/mock_vllm.py --port 8001 --prefill_tps 20000 --tpot 0.004 &   # "A100"
+python replay/mock_vllm.py --port 8001 --prefill_tps 20000 --tpot 0.004 &   # "GPU"
 python replay/mock_vllm.py --port 8000 --prefill_tps 6000  --tpot 0.008 &   # "TPU"
 python traces/gen_synthetic.py --tool_min 0.05 --tool_max 0.2 --per_combo 2 --out /tmp/fast.jsonl
 python replay/replay.py --trace /tmp/fast.jsonl --sweep --policies LB FF CA RR --concurrency_list 1 4 --reps 1

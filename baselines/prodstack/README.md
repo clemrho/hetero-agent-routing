@@ -9,7 +9,7 @@ TPU notebook
  ├─ vLLM-TPU          localhost:8000
  ├─ vllm-router       localhost:8080   ← start_router.sh, --routing-logic session
  └─ router/router.py --policy PS ──► localhost:8080 (header x-session-id = wf_id)
-                          └─► A100 vLLM (public address or SSH tunnel → localhost:8001)
+                          └─► GPU vLLM (public address or SSH tunnel → localhost:8001)
 ```
 
 ## Steps

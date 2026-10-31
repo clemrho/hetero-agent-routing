@@ -3,7 +3,7 @@
 #   bash scripts/psc/run_smoke.sh
 #
 # What it does:
-#   1. starts two vLLM servers on the same GPU (PORT_A plays "tpu", PORT_B plays "a100"; default 8000/8001)
+#   1. starts two vLLM servers on the same GPU (PORT_A plays "tpu", PORT_B plays "gpu"; default 8000/8001)
 #   2. checks each one works and prefix caching is on (scripts/check_backend.py)
 #   3. if the Production Stack router is installed (WITH_PS=1 setup), starts it on PS_PORT (default 8080)
 #   4. runs router/router.py with synthetic workflows for every policy
@@ -78,7 +78,7 @@ fi
 
 # 4. Router policies on synthetic workflows (router.py writes logs/ under the cwd)
 echo "== [4/5] Running policies: $POLICIES (n_wf=$N_WF)"
-export TPU_URL="http://127.0.0.1:$PORT_A" A100_URL="http://127.0.0.1:$PORT_B" PS_URL="http://127.0.0.1:$PS_PORT"
+export TPU_URL="http://127.0.0.1:$PORT_A" GPU_URL="http://127.0.0.1:$PORT_B" PS_URL="http://127.0.0.1:$PS_PORT"
 for pol in $POLICIES; do
   (cd "$OUT" && "$PY" "$REPO/router/router.py" --policy "$pol" --n_wf "$N_WF")
 done

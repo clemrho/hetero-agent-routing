@@ -1,8 +1,8 @@
 """
 Fake vLLM server for testing the trace -> replay -> router -> log -> analyze pipeline
-without a TPU or A100. NOT for any reported numbers.
+without a TPU or GPU. NOT for any reported numbers.
 
-    python replay/mock_vllm.py --port 8001 --prefill_tps 20000 --tpot 0.010   # "A100"
+    python replay/mock_vllm.py --port 8001 --prefill_tps 20000 --tpot 0.010   # "GPU"
     python replay/mock_vllm.py --port 8000 --prefill_tps 8000  --tpot 0.020   # "TPU"
 
 What it imitates (roughly):

@@ -1,6 +1,6 @@
 # hetero-agent-routing
 
-Routing agent workflows across heterogeneous accelerators (A100 GPU + TPU) with vLLM.
+Routing agent workflows across heterogeneous accelerators (GPU + TPU v5e) with vLLM.
 CMU 11-868 LLM Systems course project.
 
 ## Layout
@@ -21,7 +21,7 @@ CMU 11-868 LLM Systems course project.
 
 ```bash
 pip install -r requirements.txt
-export TPU_URL=http://localhost:8000 A100_URL=http://localhost:8001   # A100 via SSH tunnel
+export TPU_URL=http://localhost:8000 GPU_URL=http://localhost:8001   # GPU via SSH tunnel
 python router/router.py --policy CA --n_wf 4
 python analysis/analyze.py logs/log_CA_4.jsonl
 ```

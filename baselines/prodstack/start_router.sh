@@ -11,14 +11,14 @@
 set -euo pipefail
 
 TPU_URL="${TPU_URL:-http://localhost:8000}"
-A100_URL="${A100_URL:-http://localhost:8001}"
+GPU_URL="${GPU_URL:-${A100_URL:-http://localhost:8001}}"
 MODEL="${MODEL:-Qwen/Qwen3-4B}"
 PORT="${PS_PORT:-8080}"
 LOGIC="${LOGIC:-session}"   # session (baseline) or roundrobin (second comparison)
 
 exec vllm-router --port "$PORT" \
   --service-discovery static \
-  --static-backends "${TPU_URL},${A100_URL}" \
+  --static-backends "${TPU_URL},${GPU_URL}" \
   --static-models "${MODEL},${MODEL}" \
   --engine-stats-interval 10 \
   --log-stats \

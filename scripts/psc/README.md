@@ -1,7 +1,7 @@
 # PSC Bridges-2 smoke test (1× L40S, Qwen3-0.6B)
 
-Goal: prove the whole pipeline works on one GPU before we touch the TPU or A100.
-Two vLLM servers share one GPU (`:8000` plays "tpu", `:8001` plays "a100"); the router
+Goal: prove the whole pipeline works on one GPU before we connect the TPU.
+Two vLLM servers share one GPU (`:8000` plays "tpu", `:8001` plays "gpu"); the router
 runs every policy on synthetic agent workflows and we print the summary.
 
 Model: **Qwen/Qwen3-0.6B** (smallest Qwen3, same family as the Qwen3-4B we use later,
@@ -49,7 +49,7 @@ Results land in `logs/psc_<jobid>/`: `vllm_*.log`, `check.txt`, `logs/log_<POLIC
 - `[5/5]`: one block per policy. Expected pattern:
   - `CA`, `PS`: `wf_switched=0/4` (each workflow stays on one backend) and high `cache_hit`
   - `LB`, `RR`: workflows switch backends, so `cache_hit` is lower
-  - `FF`: everything on `a100` at this low load
+  - `FF`: everything on `gpu` at this low load
 
 Both backends are the same GPU, so latency differences between policies mean little here.
 

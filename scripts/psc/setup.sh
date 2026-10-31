@@ -41,7 +41,13 @@ fi
 echo "== Installing vllm${VLLM_VERSION:+==$VLLM_VERSION}${DEPS_BEFORE:+ (deps as of $DEPS_BEFORE)} (a few minutes)"
 uv pip install --python "$VENV/bin/python" \
   ${DEPS_BEFORE:+--exclude-newer "$DEPS_BEFORE"} \
-  "vllm${VLLM_VERSION:+==$VLLM_VERSION}" ${EXTRA_PINS:+"$EXTRA_PINS"} httpx requests
+  "vllm${VLLM_VERSION:+==$VLLM_VERSION}" ${EXTRA_PINS:+"$EXTRA_PINS"} httpx requests ninja
+# Newer vLLM JIT-compiles FlashInfer kernels at startup, which needs nvcc (not on PSC by
+# default). Download the prebuilt kernels instead, when this vLLM has the command.
+if "$VENV/bin/vllm" --help 2>/dev/null | grep -q download-kernels; then
+  echo "== Downloading prebuilt vLLM kernels (FlashInfer)"
+  "$VENV/bin/vllm" download-kernels || echo "   (download-kernels failed; startup may need nvcc + ninja)"
+fi
 "$VENV/bin/python" -c "import transformers; print('   transformers', transformers.__version__)"
 "$VENV/bin/python" -c "import vllm, torch; print('   vllm', vllm.__version__, '| torch', torch.__version__, '| cuda', torch.version.cuda, '| archs', torch.cuda.get_arch_list())"
 

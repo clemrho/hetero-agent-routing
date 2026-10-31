@@ -61,6 +61,15 @@ Both backends are the same GPU, so latency differences between policies mean lit
 | `VLLM_USE_V1` | `0` | `0` = older V0 engine (most reliable on V100 with vLLM 0.10.x) |
 | `VLLM_EXTRA_ARGS` | — | extra flags for `vllm serve` |
 
+### L40S instead of V100 (recommended: prefix caching works there)
+
+```bash
+sinfo -o "%P %G" | grep -i l40s                                      # exact gres name
+VLLM_VERSION= VENV=$PROJECT/har/vllm_env_latest bash scripts/psc/setup.sh   # latest vLLM, separate venv
+interact -p GPU-shared --gres=gpu:<l40s gres name>:1 -t 01:00:00
+VENV=$PROJECT/har/vllm_env_latest VLLM_USE_V1=1 bash scripts/psc/run_smoke.sh
+```
+
 Single server by hand: `bash scripts/psc/serve.sh 8000 0.85`, then
 `$PROJECT/har/vllm_env/bin/python scripts/check_backend.py --url http://localhost:8000`.
 
@@ -70,6 +79,8 @@ Single server by hand: `bash scripts/psc/serve.sh 8000 0.85`, then
 |---|---|
 | `no kernel image is available for execution on the device`, `torch ... +cu130 does not include kernels for this GPU` | The venv has a vLLM built with CUDA 13 (no V100 support). Re-run `bash scripts/psc/setup.sh`: it pins 0.10.1.1 and rebuilds the venv. `setup.sh` prints `archs`, which must include `sm_70` |
 | `Qwen2Tokenizer has no attribute all_special_tokens_extended` | transformers 5 is too new for vLLM 0.10.1.1. Re-run `bash scripts/psc/setup.sh` (it now installs `transformers<5` and dependencies as of 2025-09-01) |
+| `prefix_prefill.py ... PassManager::run failed` on the cache-hit request | V100 + vLLM 0.10 can't compile the prefix-cache kernel. Use a newer GPU (L40S) with the latest vLLM, see below |
+| `FileNotFoundError: 'ninja'` / `FlashInfer kernels are disabled` (latest vLLM) | Re-run `setup.sh` with the same `VENV`: it installs `ninja` and runs `vllm download-kernels` |
 | 0.10.1.1 also fails | `VLLM_VERSION=0.9.2 bash scripts/psc/setup.sh` |
 | Attention backend error with `VLLM_USE_V1=1` | keep the default `VLLM_USE_V1=0`, or `export VLLM_ATTENTION_BACKEND=TRITON_ATTN` |
 | Second server fails with not enough free memory | `GPU_MEM=0.35` |

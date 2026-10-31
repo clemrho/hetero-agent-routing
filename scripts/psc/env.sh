@@ -10,7 +10,7 @@ export ROUTER_VENV="${ROUTER_VENV:-$HAR_ROOT/router_env}" # Production Stack rou
 export HF_HOME="${HF_HOME:-$HAR_ROOT/hf_cache}"           # model weights
 export UV_CACHE_DIR="${UV_CACHE_DIR:-$HAR_ROOT/uv_cache}"
 export UV_PYTHON_INSTALL_DIR="${UV_PYTHON_INSTALL_DIR:-$HAR_ROOT/uv_python}"
-export PATH="$HOME/.local/bin:$PATH"                      # where uv gets installed
+export PATH="$VENV/bin:$HOME/.local/bin:$PATH"            # venv tools (ninja) + uv
 
 export MODEL="${MODEL:-Qwen/Qwen3-0.6B}"
 export MAX_LEN="${MAX_LEN:-8192}"

@@ -1,51 +1,48 @@
 # Plan and roles
 
-Goal: route agent workflows (multi-step LLM calls with tool gaps in between) across
-heterogeneous devices (GPU + TPU v5e; the GPU is currently a PSC L40S), and show that our strategy (working name **GapShift**:
-use the tool gap to move a workflow's context to the faster device) beats the baselines on
-workflow completion time / TTFT without losing too much prefix-cache reuse.
+Goal: route agent workflows (multi-step LLM calls with tool waits in between) across two
+accelerators with different performance profiles (TPU v5e + a GPU, currently a PSC L40S),
+each running vLLM with prefix caching. Show that a policy that uses the tool gaps to place a
+workflow's context where it is cheapest (working name **GapShift**) beats affinity-only and
+load-only baselines on workflow completion time and TTFT.
+
+We do not assume one device is "fast" and the other "slow": measured profiles decide
+(see [results/2026-11-03](../results/2026-11-03_tpu-v5e_l40s_quick12/README.md)).
 
 ## Who owns what
 
-Each person owns a directory, so PRs rarely conflict. Names are a proposal — swap as needed.
-
-| Person | Owns | Directory |
-|---|---|---|
-| Yanze | Router, baselines (LB / FF / CA / RR / PS), GapShift | `router/`, `baselines/` |
-| Hannah | Agent traces and the replay client that feeds them to the router | `traces/`, `replay/` |
-| Keyi | Infra (vLLM-TPU, GPU vLLM on PSC, SSH tunnel, Production Stack router), experiment runs, analysis + plots | `scripts/`, `analysis/` |
+| | Yanze | Keyi | Hannah |
+|---|---|---|---|
+| In one line | System + experiments | Device profiling + plots | Workloads + replay |
+| Work | vLLM on TPU and GPU, TPU ⇄ GPU connection, router + baselines (LB / FF / CA / RR / PS), sweeps, GapShift | Unloaded TTFT on both devices (cold / warm, 1k–16k tokens), decode speed; Fig. 1 (device profiles), Fig. 2 (workflow completion time), Fig. 3 (latency breakdown) | Synthetic traces, HotpotQA traces, `replay/replay.py` |
+| Code | `router/`, `baselines/`, `scripts/` | `analysis/` | `traces/`, `replay/` |
+| Hands off | Logs → Keyi | Profile table → GapShift cost model | Traces + replay → Yanze |
 
 Shared interfaces (change only with a heads-up to everyone):
 - `Router.call(wf_id, step, prompt, max_tokens) -> rec` in `router/router.py`
-- The log line format (one JSON per LLM call) — see `analysis/analyze.py`
+- The log line format (one JSON per LLM call), see `analysis/analyze.py`
 - The trace format in `traces/README.md`
 
-## Milestones
+## Status (2026-11-03)
 
-### Week 1 — everything runs end to end
-- [ ] Keyi: vLLM-TPU up on :8000, GPU vLLM reachable from the notebook (tunnel → :8001), same model on both
-- [ ] Keyi: Production Stack router installed, `vllm-router --help` shows `session` and `--session-key`
-- [ ] Yanze: `router.py --policy {LB,FF,CA,RR}` smoke test with synthetic workflows on both devices
-- [ ] Yanze: `--policy PS` goes through the Production Stack router; confirm from its log that each `wf_id` sticks to one backend
-- [ ] Hannah: trace format agreed; first small set of real agent traces (steps, prompt growth, tool durations, output lengths)
-- [ ] Keyi: `analysis/analyze.py` runs on the smoke-test logs
+- [x] vLLM on PSC GPUs (V100 and L40S; V100 can't run prefix caching, see `scripts/psc/README.md`)
+- [x] vLLM-TPU on Colab TPU v5e, GPU reached over an SSH tunnel through the PSC login node
+- [x] Router with LB / FF / CA / RR, and PS (official Production Stack router, session mode) on PSC
+- [x] Synthetic trace generator + replay client (Hannah)
+- [x] First cross-device baseline: LB / FF / CA / RR × concurrency {4, 8}, 1 rep ([results](../results/2026-11-03_tpu-v5e_l40s_quick12/README.md))
+- [x] Midterm report draft: [docs/midterm_report.md](midterm_report.md)
 
-### Week 2 — baselines on real traces
-- [ ] Hannah: `replay/` replays traces through `Router` with real tool gaps and arrival times
-- [ ] Keyi: sweep n_wf (concurrency) × policy, save logs under `logs/`
-- [ ] Yanze: measure per-device prefill/decode speed and cache-transfer (re-prefill) cost → numbers GapShift will use
-- [ ] All: first results table + plot, agree on main metric
+## Timeline
 
-### Week 3 — GapShift
-- [ ] Yanze: GapShift policy — at a tool gap, decide whether to move the workflow to the faster device (cost of re-prefill vs. expected queueing saved)
-- [ ] Hannah: tool-duration predictor / trace stats that GapShift needs
-- [ ] Keyi: rerun the sweep with GapShift, ablations (threshold, gap length)
-
-### Week 4 — write-up
-- [ ] Final experiments, plots, report, presentation
+| Dates | Yanze | Keyi | Hannah |
+|---|---|---|---|
+| 11/4 | Midterm report due | | |
+| 11/5–11/9 | Move the TPU next to PSC (GCP v5e VM in a US-East zone, or the course hub) to remove the ~200 ms tunnel RTT; PS baseline in the cross-device setup | Device profiles on both devices (Fig. 1) | HotpotQA traces (due 11/10) |
+| 11/10–11/16 | Medium / long-context sweep: contexts to 16k, concurrency {4, 8, 16}, 2–3 reps; RTT-corrected analysis | Fig. 2, Fig. 3 from the sweep | Replay on HotpotQA traces |
+| 11/17–11/26 | Implement GapShift (all three decide the cost model together) | Ablations: gap length, threshold | Tool-duration stats for GapShift |
+| 11/27–12/4 | Final runs, report, presentation (12/4) | Final plots | Final traces |
 
 ## Workflow
 
-- `main` is protected by habit: every change goes through a PR from a personal branch (`yanze/...`, `hannah/...`, `keyi/...`).
-- One reviewer approves before merge.
-- Don't commit model weights or large logs; `logs/` is git-ignored (put final result logs in `results/`).
+- Every change goes through a personal branch (`yanze/...`, `hannah/...`, `keyi/...`) and a PR; one reviewer approves before merge.
+- Don't commit model weights or large logs; `logs/` is git-ignored. Runs we report go in `results/<date>_<devices>_<what>/`.

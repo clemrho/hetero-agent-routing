@@ -1,0 +1,79 @@
+# Raw notebook output, scripts/colab/tpu_psc_smoke.ipynb, branch yanze/colab-tpu-psc @ 8de3674
+# Colab TPU v5e (vLLM-TPU, :8000)  +  PSC Bridges-2 L40S node gl003 (vLLM, via SSH tunnel on :8001)
+
+## cell 3: TPU backend check
+http://127.0.0.1:8000 serves ['Qwen/Qwen3-4B']
+  cold ok (216.1 ms), sending warm request (prefix-cache hit)...
+  cold:   216.1 ms  prompt_tokens=3031  cached_tokens=0
+  warm:    73.5 ms  prompt_tokens=3031  cached_tokens=3008
+OK  speedup cold/warm = 2.9x
+
+## cell 5: L40S backend check (through the tunnel)
+http://127.0.0.1:8001 serves ['Qwen/Qwen3-4B']
+  cold ok (468.9 ms), sending warm request (prefix-cache hit)...
+  cold:   468.9 ms  prompt_tokens=3035  cached_tokens=0
+  warm:   227.4 ms  prompt_tokens=3035  cached_tokens=3024
+OK  speedup cold/warm = 2.1x
+
+## cell 6: router.py synthetic smoke test (LB, 4 workflows)
+LB n_wf=4: 8.5s total
+ LB /content/hetero-agent-routing/logs/colab_1793746036/logs/log_LB_4.jsonl
+    calls=20 makespan=7.5s wf_mean=7.4s
+    ttft p50=0.214s p99=0.560s cache_hit=52.5% (max 73.3%)
+    devices={'tpu': 10, 'gpu': 10} wf_switched=4/4
+
+## cell 7: network round trip (GET /v1/models, median of 10)
+tpu (local): median RTT 0.6 ms
+gpu (via PSC tunnel): median RTT 198.7 ms
+
+## cell 8: quick baseline (QUICK_LIMIT=None)
+wrote 12 workflows -> /content/hetero-agent-routing/logs/synthetic_quick.jsonl   (max_model_len=16384)
+steps  ctx0   n kept steps  max ctx truncated
+    3  2048   3        [3]     3267      0/3
+    3  8192   3        [3]     9385      0/3
+    5  2048   3        [5]     4234      0/3
+    5  8192   3        [5]    10461      0/3
+total LLM calls=48, total tool wait=20s (lower bound on a concurrency-1 run, before any LLM time)
+trace /content/hetero-agent-routing/logs/synthetic_quick.jsonl: 12 workflows, 48 LLM calls; backends {'gpu': 'http://127.0.0.1:8001', 'tpu': 'http://127.0.0.1:8000'}
+  warmup  gpu (http://127.0.0.1:8001): 3.6s for lengths [1024, 2048, 4096, 8192, 12288]
+  warmup  tpu (http://127.0.0.1:8000): 2.7s for lengths [1024, 2048, 4096, 8192, 12288]
+LB_c4_r0: 12/12 workflows in 19.5s -> /content/hetero-agent-routing/logs/tpu_gpu_quick12/synthetic_quick/LB_c4_r0.jsonl
+FF_c4_r0: 12/12 workflows in 19.8s -> /content/hetero-agent-routing/logs/tpu_gpu_quick12/synthetic_quick/FF_c4_r0.jsonl
+CA_c4_r0: 12/12 workflows in 18.7s -> /content/hetero-agent-routing/logs/tpu_gpu_quick12/synthetic_quick/CA_c4_r0.jsonl
+RR_c4_r0: 12/12 workflows in 19.4s -> /content/hetero-agent-routing/logs/tpu_gpu_quick12/synthetic_quick/RR_c4_r0.jsonl
+LB_c8_r0: 12/12 workflows in 12.7s -> /content/hetero-agent-routing/logs/tpu_gpu_quick12/synthetic_quick/LB_c8_r0.jsonl
+FF_c8_r0: 12/12 workflows in 13.4s -> /content/hetero-agent-routing/logs/tpu_gpu_quick12/synthetic_quick/FF_c8_r0.jsonl
+CA_c8_r0: 12/12 workflows in 12.4s -> /content/hetero-agent-routing/logs/tpu_gpu_quick12/synthetic_quick/CA_c8_r0.jsonl
+RR_c8_r0: 12/12 workflows in 14.5s -> /content/hetero-agent-routing/logs/tpu_gpu_quick12/synthetic_quick/RR_c8_r0.jsonl
+ CA .../CA_c4_r0.jsonl
+    calls=48 makespan=18.7s wf_mean=5.2s
+    ttft p50=0.174s p99=1.261s cache_hit=71.8% (max 71.9%)
+    devices={'tpu': 19, 'gpu': 29} wf_switched=0/12
+ CA .../CA_c8_r0.jsonl
+    calls=48 makespan=12.4s wf_mean=5.9s
+    ttft p50=0.181s p99=1.859s cache_hit=71.8% (max 71.9%)
+    devices={'tpu': 24, 'gpu': 24} wf_switched=0/12
+ FF .../FF_c4_r0.jsonl
+    calls=48 makespan=19.8s wf_mean=6.0s
+    ttft p50=0.225s p99=1.376s cache_hit=71.9% (max 71.9%)
+    devices={'gpu': 48} wf_switched=0/12
+ FF .../FF_c8_r0.jsonl
+    calls=48 makespan=13.4s wf_mean=6.8s
+    ttft p50=0.269s p99=1.422s cache_hit=54.7% (max 71.9%)
+    devices={'tpu': 21, 'gpu': 27} wf_switched=9/12
+ LB .../LB_c4_r0.jsonl
+    calls=48 makespan=19.5s wf_mean=5.5s
+    ttft p50=0.265s p99=1.241s cache_hit=52.1% (max 71.9%)
+    devices={'tpu': 23, 'gpu': 25} wf_switched=10/12
+ LB .../LB_c8_r0.jsonl
+    calls=48 makespan=12.7s wf_mean=6.6s
+    ttft p50=0.265s p99=1.856s cache_hit=53.3% (max 71.9%)
+    devices={'tpu': 24, 'gpu': 24} wf_switched=9/12
+ RR .../RR_c4_r0.jsonl
+    calls=48 makespan=19.4s wf_mean=5.6s
+    ttft p50=0.229s p99=1.266s cache_hit=50.9% (max 71.9%)
+    devices={'tpu': 24, 'gpu': 24} wf_switched=10/12
+ RR .../RR_c8_r0.jsonl
+    calls=48 makespan=14.4s wf_mean=7.2s
+    ttft p50=0.343s p99=2.000s cache_hit=48.7% (max 71.9%)
+    devices={'tpu': 24, 'gpu': 24} wf_switched=10/12

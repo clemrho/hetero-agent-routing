@@ -11,7 +11,7 @@ and are building **GapShift**, which uses the tool-call gaps to re-place a workf
 
 - Midterm report: [docs/midterm_report.md](docs/midterm_report.md)
 - Plan, roles, timeline: [docs/PLAN.md](docs/PLAN.md)
-- Results: [results/](results/README.md) (latest: [2026-11-03 TPU v5e + L40S baseline](results/2026-11-03_tpu-v5e_l40s_quick12/README.md))
+- Results: [results/](results/README.md) (latest: [2026-11-03 TPU v5e + L40S, 64 workflows, concurrency 8–32](results/2026-11-03_tpu-v5e_l40s_short64/README.md))
 
 ## How it fits together
 

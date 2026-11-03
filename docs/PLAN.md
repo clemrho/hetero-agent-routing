@@ -30,6 +30,8 @@ Shared interfaces (change only with a heads-up to everyone):
 - [x] Router with LB / FF / CA / RR, and PS (official Production Stack router, session mode) on PSC
 - [x] Synthetic trace generator + replay client (Hannah)
 - [x] First cross-device baseline: LB / FF / CA / RR × concurrency {4, 8}, 1 rep ([results](../results/2026-11-03_tpu-v5e_l40s_quick12/README.md))
+- [x] High-load sweep: 64 workflows × concurrency {8, 16, 32}, 1 rep ([results](../results/2026-11-03_tpu-v5e_l40s_short64/README.md))
+- [ ] Long-context group (max_model_len 32768, contexts to ~27k): notebook cells ready, not run yet
 - [x] Midterm report draft: [docs/midterm_report.md](midterm_report.md)
 
 ## Timeline

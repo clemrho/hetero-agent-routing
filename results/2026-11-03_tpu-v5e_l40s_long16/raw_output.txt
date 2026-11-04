@@ -1,0 +1,59 @@
+# Raw notebook output: long-context sweep, max_model_len 32768 on both servers
+# Colab TPU v5e (vLLM-TPU, :8000) + PSC Bridges-2 L40S (vLLM, SSH tunnel on :8001), Qwen/Qwen3-4B, bf16
+# Two sweeps of the same trace are in the same log folder:
+#   long16_c2-8/long16/       rep A, branch yanze/colab-tpu-psc, device label "gpu"
+#   long16_c2-8/long16_c2-8/  rep B, run from main, device label "a100" (same routing logic);
+#                             LB_c2 skipped because of an empty log from an earlier failed attempt
+
+wrote 16 workflows -> /content/hetero-agent-routing/logs/long16_c2-8.jsonl   (max_model_len=32768)
+steps  ctx0   n kept steps  max ctx truncated
+    3  8192   4        [3]    14011      0/4
+    3 16384   4        [3]    21744      0/4
+    5  8192   4        [5]    18354      0/4
+    5 16384   4        [5]    27124      0/4
+total LLM calls=64, total tool wait=62s (lower bound on a concurrency-1 run, before any LLM time)
+trace /content/hetero-agent-routing/logs/long16_c2-8.jsonl: 16 workflows, 64 LLM calls; backends {'a100': 'http://localhost:8001', 'tpu': 'http://127.0.0.1:8000'}
+  warmup a100 (http://localhost:8001): 6.7s for lengths [1024, 2048, 4096, 8192, 16384, 24576]
+  warmup  tpu (http://127.0.0.1:8000): 6.0s for lengths [1024, 2048, 4096, 8192, 16384, 24576]
+skip /content/hetero-agent-routing/logs/long16_c2-8/long16_c2-8/LB_c2_r0.jsonl (exists; --overwrite to redo)
+FF_c2_r0: 16/16 workflows in 80.6s
+CA_c2_r0: 16/16 workflows in 69.7s
+RR_c2_r0: 16/16 workflows in 76.7s
+LB_c4_r0: 16/16 workflows in 51.0s
+FF_c4_r0: 16/16 workflows in 55.3s
+CA_c4_r0: 16/16 workflows in 43.6s
+RR_c4_r0: 16/16 workflows in 53.7s
+LB_c8_r0: 16/16 workflows in 37.6s
+FF_c8_r0: 16/16 workflows in 41.6s
+CA_c8_r0: 16/16 workflows in 34.4s
+RR_c8_r0: 16/16 workflows in 49.5s
+(no failed calls)
+
+## rep B (long16_c2-8/long16_c2-8/, label a100)
+ CA CA_c2_r0: calls=64 makespan=69.7s wf_mean=8.5s  ttft p50=0.454s p99=1.419s cache_hit=70.0% (max 70.1%) devices={'a100': 35, 'tpu': 29} wf_switched=0/16
+ CA CA_c4_r0: calls=64 makespan=43.6s wf_mean=9.5s  ttft p50=0.467s p99=1.928s cache_hit=70.0% (max 70.1%) devices={'a100': 33, 'tpu': 31} wf_switched=0/16
+ CA CA_c8_r0: calls=64 makespan=34.4s wf_mean=14.6s ttft p50=0.814s p99=4.341s cache_hit=59.0% (max 70.1%) devices={'tpu': 27, 'a100': 37} wf_switched=0/16
+ FF FF_c2_r0: calls=64 makespan=80.6s wf_mean=9.7s  ttft p50=0.573s p99=1.511s cache_hit=70.1% (max 70.1%) devices={'a100': 64} wf_switched=0/16
+ FF FF_c4_r0: calls=64 makespan=55.3s wf_mean=12.6s ttft p50=0.642s p99=3.290s cache_hit=70.1% (max 70.1%) devices={'a100': 64} wf_switched=0/16
+ FF FF_c8_r0: calls=64 makespan=41.6s wf_mean=17.7s ttft p50=1.466s p99=4.760s cache_hit=38.7% (max 70.1%) devices={'tpu': 22, 'a100': 42} wf_switched=13/16
+ LB LB_c2_r0: empty (skipped)
+ LB LB_c4_r0: calls=64 makespan=50.9s wf_mean=11.5s ttft p50=0.852s p99=2.614s cache_hit=42.7% (max 70.1%) devices={'a100': 38, 'tpu': 26} wf_switched=15/16
+ LB LB_c8_r0: calls=64 makespan=37.6s wf_mean=16.8s ttft p50=1.062s p99=4.543s cache_hit=42.9% (max 70.1%) devices={'tpu': 26, 'a100': 38} wf_switched=11/16
+ RR RR_c2_r0: calls=64 makespan=76.7s wf_mean=8.9s  ttft p50=0.528s p99=1.701s cache_hit=58.1% (max 70.1%) devices={'a100': 32, 'tpu': 32} wf_switched=9/16
+ RR RR_c4_r0: calls=64 makespan=53.7s wf_mean=12.0s ttft p50=1.016s p99=2.588s cache_hit=41.3% (max 70.1%) devices={'a100': 32, 'tpu': 32} wf_switched=14/16
+ RR RR_c8_r0: calls=64 makespan=49.5s wf_mean=22.0s ttft p50=1.988s p99=7.822s cache_hit=28.1% (max 70.1%) devices={'tpu': 32, 'a100': 32} wf_switched=15/16
+
+## rep A (long16_c2-8/long16/, label gpu)
+ CA CA_c2_r0: calls=64 makespan=71.9s wf_mean=8.6s  ttft p50=0.471s p99=1.425s cache_hit=70.0% (max 70.1%) devices={'gpu': 37, 'tpu': 27} wf_switched=0/16
+ CA CA_c4_r0: calls=64 makespan=42.4s wf_mean=9.3s  ttft p50=0.429s p99=1.925s cache_hit=70.0% (max 70.1%) devices={'gpu': 33, 'tpu': 31} wf_switched=0/16
+ CA CA_c8_r0: calls=64 makespan=34.5s wf_mean=14.7s ttft p50=0.733s p99=4.341s cache_hit=59.0% (max 70.1%) devices={'tpu': 27, 'gpu': 37} wf_switched=0/16
+ FF FF_c2_r0: calls=64 makespan=80.4s wf_mean=9.7s  ttft p50=0.574s p99=1.524s cache_hit=70.1% (max 70.1%) devices={'gpu': 64} wf_switched=0/16
+ FF FF_c4_r0: calls=64 makespan=54.9s wf_mean=12.5s ttft p50=0.637s p99=3.350s cache_hit=70.1% (max 70.1%) devices={'gpu': 64} wf_switched=0/16
+ FF FF_c8_r0: calls=64 makespan=41.1s wf_mean=16.6s ttft p50=1.416s p99=4.899s cache_hit=45.7% (max 70.1%) devices={'tpu': 21, 'gpu': 43} wf_switched=10/16
+ LB LB_c2_r0: calls=64 makespan=79.2s wf_mean=9.3s  ttft p50=0.593s p99=1.805s cache_hit=51.9% (max 70.1%) devices={'tpu': 25, 'gpu': 39} wf_switched=13/16
+ LB LB_c4_r0: calls=64 makespan=50.1s wf_mean=10.9s ttft p50=0.682s p99=2.554s cache_hit=51.2% (max 70.1%) devices={'gpu': 35, 'tpu': 29} wf_switched=11/16
+ LB LB_c8_r0: calls=64 makespan=41.0s wf_mean=17.3s ttft p50=1.303s p99=6.232s cache_hit=40.9% (max 70.1%) devices={'tpu': 26, 'gpu': 38} wf_switched=13/16
+ RR RR_c2_r0: calls=64 makespan=76.7s wf_mean=8.9s  ttft p50=0.520s p99=1.546s cache_hit=58.1% (max 70.1%) devices={'gpu': 32, 'tpu': 32} wf_switched=9/16
+ RR RR_c4_r0: calls=64 makespan=51.2s wf_mean=11.6s ttft p50=0.800s p99=2.595s cache_hit=46.5% (max 70.1%) devices={'gpu': 32, 'tpu': 32} wf_switched=12/16
+ RR RR_c8_r0: calls=64 makespan=47.5s wf_mean=20.1s ttft p50=1.658s p99=6.923s cache_hit=34.9% (max 70.1%) devices={'tpu': 32, 'gpu': 32} wf_switched=14/16
+saved to /content/drive/MyDrive/har/long16_c2-8

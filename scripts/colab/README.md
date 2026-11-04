@@ -1,7 +1,7 @@
 # Colab TPU v5e + PSC L40S smoke test
 
 Open the notebook straight from GitHub:
-[tpu_psc_smoke.ipynb](https://colab.research.google.com/github/clemrho/hetero-agent-routing/blob/main/scripts/colab/tpu_psc_smoke.ipynb)
+[tpu_psc_smoke.ipynb](https://colab.research.google.com/github/clemrho/hetero-agent-routing/blob/yanze/colab-tpu-psc/scripts/colab/tpu_psc_smoke.ipynb)
 
 ```
 Colab (TPU v5e)

@@ -8,3 +8,4 @@ One folder per experiment run, named `<date>_<devices>_<what>`. Each has a `READ
 |---|---|---|---|
 | 2026-11-03 | [tpu-v5e_l40s_quick12](2026-11-03_tpu-v5e_l40s_quick12/README.md) | Colab TPU v5e + PSC L40S | First cross-device baseline: LB / FF / CA / RR, concurrency 4 and 8, 12 synthetic workflows, Qwen3-4B |
 | 2026-11-03 | [tpu-v5e_l40s_short64](2026-11-03_tpu-v5e_l40s_short64/README.md) | Colab TPU v5e + PSC L40S | High load: LB / FF / CA / RR, concurrency 8 / 16 / 32, 64 synthetic workflows, Qwen3-4B |
+| 2026-11-03 | [tpu-v5e_l40s_long16](2026-11-03_tpu-v5e_l40s_long16/README.md) | Colab TPU v5e + PSC L40S | Long context (to ~27k, max_model_len 32768): LB / FF / CA / RR, concurrency 2 / 4 / 8, 16 workflows, 2 reps |

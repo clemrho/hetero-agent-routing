@@ -144,13 +144,15 @@ If another device is cheaper by a margin and the gap is long enough, GapShift se
 request (*p_k*, one output token) to that device during the gap, so its cache already holds the
 context when the next step arrives and only the new tokens need prefilling. Otherwise the
 workflow stays. This keeps CA's cache reuse while letting workflows leave an overloaded or
-memory-starved device, which Section 4.3 shows CA cannot do.
+memory-starved device, which Sections 4.3 and 4.4 show CA cannot do.
 
 ## 4. Experiments
 
-All runs: Qwen3-4B, bfloat16, `max_model_len` 16384, synthetic traces with 3 or 5 steps per
-workflow, starting context 2k or 8k tokens growing to ~10.5k, 20–60 output tokens and 0.2–0.8 s
-tool waits per step, one repetition. Full setups and raw outputs are in `results/`.
+All runs: Qwen3-4B, bfloat16, synthetic traces with 3 or 5 steps per workflow and 20–60 output
+tokens per step. **Short-context group** (Sections 4.2–4.3): `max_model_len` 16384, starting
+context 2k or 8k tokens growing to ~10.5k, 0.2–0.8 s tool waits, one repetition. **Long-context
+group** (Section 4.4): `max_model_len` 32768, starting context 8k or 16k growing to ~27k,
+0.5–2 s tool waits, two repetitions. Full setups and raw outputs are in `results/`.
 
 ### 4.1 Device check
 
@@ -220,21 +222,61 @@ makespan, so the differences are small; Section 4.3 raises the load.
 6. **LB is second.** It balances load well (makespan within 9% of CA at 32) but loses 13–20 points
    of hit rate against CA, which shows up as 44–58% higher median TTFT.
 
-Together, (2) and (3) are the opening for GapShift: the best baseline keeps the cache but cannot
-move a workflow off an overloaded or memory-starved device, while the policies that do move
-workflows throw the cache away.
+### 4.4 Long context: 16 workflows up to ~27k tokens, concurrency 2, 4, 8
 
-**Limitations.** One repetition per setting (p99 is close to the single slowest call). The GPU
-path includes a 199 ms network round trip from Colab to PSC, a placement artifact rather than a
-hardware property. The eviction explanation is inferred from hit rates and memory sizes; we have
-not yet collected vLLM's prefix-cache metrics. PS was not run in the cross-device setup, and
-contexts stop at ~10.5k tokens.
+64 LLM calls per run; hit-rate upper bound 70.1%. Rep A shown; rep B (same trace, new prompt
+salt) in brackets for makespan and hit rate.
+
+| Conc. | Policy | Makespan | Mean wf time | TTFT p50 | TTFT p99 | Cache hit | Workflows switched |
+|---|---|---|---|---|---|---|---|
+| 4 | **CA** | **42.4 s** (43.6) | **9.3 s** | **0.43 s** | 1.93 s | 70.0% (70.0) | 0 / 16 |
+| 4 | FF | 54.9 s (55.3) | 12.5 s | 0.64 s | 3.35 s | 70.1% (70.1) | 0 / 16 |
+| 4 | LB | 50.1 s (50.9) | 10.9 s | 0.68 s | 2.55 s | 51.2% (42.7) | 11 / 16 |
+| 4 | RR | 51.2 s (53.7) | 11.6 s | 0.80 s | 2.60 s | 46.5% (41.3) | 12 / 16 |
+| 8 | **CA** | **34.5 s** (34.4) | **14.7 s** | **0.73 s** | 4.34 s | **59.0%** (59.0) | 0 / 16 |
+| 8 | FF | 41.1 s (41.6) | 16.6 s | 1.42 s | 4.90 s | 45.7% (38.7) | 10 / 16 |
+| 8 | LB | 41.0 s (37.6) | 17.3 s | 1.30 s | 6.23 s | 40.9% (42.9) | 13 / 16 |
+| 8 | RR | 47.5 s (49.5) | 20.1 s | 1.66 s | 6.92 s | 34.9% (28.1) | 14 / 16 |
+
+At concurrency 2 the ranking is the same (CA 71.9 s, RR 76.7 s, LB 79.2 s, FF 80.4 s).
+
+**Short vs. long context at concurrency 8:**
+
+| | Short (2k → 10.5k) | Long (8k → 27k) |
+|---|---|---|
+| CA makespan vs. RR | −15% | **−27%** |
+| RR median TTFT / CA median TTFT | 1.5× | **2.3×** |
+| Concurrency where CA's hit rate starts to drop | 16 | **8** |
+
+**Analysis.**
+
+7. **The value of cache affinity grows with context length** (RQ1). A miss now re-prefills 8k–27k
+   tokens instead of 2k–10k, so every lost hit costs more, and CA's lead over RR roughly doubles.
+8. **Keeping the cache is not enough; both devices must be used.** At concurrency 2 and 4 FF never
+   reaches its threshold, so all 64 calls go to the GPU. It matches CA's hit rate, but CA's
+   makespan is 11–23% lower, because FF leaves the TPU idle and every call pays the tunnel RTT.
+9. **Longer contexts hit the memory limit sooner.** CA never switches devices, yet its hit rate
+   drops to 59% already at concurrency 8: eight contexts of 14k–27k tokens exceed the v5e's
+   KV-cache space (~50k tokens), so prefixes are evicted during tool waits.
+10. **Deterministic vs. load-dependent placement.** CA (and FF while it stays on one device) gives
+    the same placement and nearly the same numbers in both repetitions; LB, RR and FF at 8 decide
+    from in-flight counts per call, and their hit rates differ by up to 9 points between repetitions.
+
+Together, (2), (3) and (9) are the opening for GapShift: the best baseline keeps the cache but
+cannot move a workflow off an overloaded or memory-starved device, and this matters more as
+contexts grow, while the policies that do move workflows throw the cache away.
+
+**Limitations.** The short-context runs have one repetition (p99 is close to the single slowest
+call); the long-context runs have two. The GPU path includes a 199 ms network round trip from
+Colab to PSC, a placement artifact rather than a hardware property. The eviction explanation is
+inferred from hit rates and memory sizes; we have not yet collected vLLM's prefix-cache metrics.
+PS was not run in the cross-device setup.
 
 ## 5. Remaining Work and Timeline
 
 | Dates | Work |
 |---|---|
-| 11/5–11/9 | Long-context group: both servers at `max_model_len` 32768, contexts growing to ~27k, concurrency 2/4/8 (notebook ready). Remove the network confound: run the TPU in a GCP zone near PSC (or the course cluster); report RTT-corrected TTFT. Add PS to the cross-device runs. Device profiles: cold/warm TTFT for 1k–32k tokens and decode speed on both devices (Keyi). |
+| 11/5–11/9 | Remove the network confound: run the TPU in a GCP zone near PSC (or the course cluster); report RTT-corrected TTFT. Add PS to the cross-device runs. Device profiles: cold/warm TTFT for 1k–32k tokens and decode speed on both devices (Keyi). |
 | 11/10–11/16 | HotpotQA ReAct traces (Hannah, 11/10). 2–3 repetitions of all sweeps; collect vLLM prefix-cache metrics to confirm evictions; figures for workflow completion time and latency breakdown. |
 | 11/17–11/26 | Implement GapShift (cost model from the profiles, pre-warm during gaps); ablations over gap length, context length and concurrency. |
 | 11/27–12/4 | Final experiments, report and presentation (12/4). |

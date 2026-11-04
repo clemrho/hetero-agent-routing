@@ -11,7 +11,7 @@ and are building **GapShift**, which uses the tool-call gaps to re-place a workf
 
 - Midterm report: [docs/midterm_report.md](docs/midterm_report.md)
 - Plan, roles, timeline: [docs/PLAN.md](docs/PLAN.md)
-- Results: [results/](results/README.md) (latest: [2026-11-03 TPU v5e + L40S, 64 workflows, concurrency 8–32](results/2026-11-03_tpu-v5e_l40s_short64/README.md))
+- Results: [results/](results/README.md) (latest: [2026-11-03 TPU v5e + L40S, long context to ~27k](results/2026-11-03_tpu-v5e_l40s_long16/README.md))
 
 ## How it fits together
 
@@ -58,8 +58,8 @@ The router runs next to the TPU because the Colab runtime can only open outgoing
    sbatch --export=ALL,MODEL=Qwen/Qwen3-4B,MAX_LEN=16384 scripts/psc/serve.sbatch
    cat slurm-har-serve-<jobid>.out    # wait for: READY node=...
    ```
-2. **TPU on Colab**: open [scripts/colab/tpu_psc_smoke.ipynb](https://colab.research.google.com/github/clemrho/hetero-agent-routing/blob/main/scripts/colab/tpu_psc_smoke.ipynb)
-   with a TPU v5e runtime, set `MODEL`, `MAX_LEN`, `PSC_USER`, `PSC_NODE`, run all cells.
+2. **TPU on Colab**: open [scripts/colab/tpu_psc_smoke.ipynb](https://colab.research.google.com/github/clemrho/hetero-agent-routing/blob/yanze/colab-tpu-psc/scripts/colab/tpu_psc_smoke.ipynb)
+   (branch `yanze/colab-tpu-psc` until it is merged) with a TPU v5e runtime; set `BRANCH`, `MODEL`, `MAX_LEN`, `PSC_USER`, `PSC_NODE`, run all cells.
 3. **Single GPU only** (no TPU): `bash scripts/psc/run_smoke.sh` on a PSC GPU node runs both backends on one GPU.
 
 Environment variables used by the router: `TPU_URL`, `GPU_URL` (old name `A100_URL` still works), `PS_URL`, `MODEL`.
